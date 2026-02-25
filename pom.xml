@@ -13,5 +13,14 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-    
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.34</version>  <!-- 使用最新的稳定版本 -->
+            <scope>provided</scope>      <!-- provided作用域表示编译时需要，但运行时不需要 -->
+        </dependency>
+    </dependencies>
+
 </project>
