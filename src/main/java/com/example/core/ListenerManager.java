@@ -19,6 +19,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * Manages the registration, unregistration, and invocation of listeners and executors.
+ * This class provides methods to register objects for listener and parameter processing,
+ * scan fields and methods for specific annotations, and manage the lifecycle of listeners
+ * and executors.
+ */
 @NoArgsConstructor
 public class ListenerManager {
     private final Map<String, List<ListenerInfo>> listenerMap = new ConcurrentHashMap<>();
@@ -225,6 +231,13 @@ public class ListenerManager {
         }
     }
 
+    /**
+     * Retrieves the value of a field associated with a listener, provided that the listener is in LISTEN mode.
+     *
+     * @param listenerName The name of the listener whose field value is to be retrieved.
+     * @return The value of the field if the listener is found and is in LISTEN mode, otherwise null.
+     * @throws ListenerException If an error occurs while trying to retrieve the listener value.
+     */
     public Object getListenerValue(String listenerName) {
         List<ListenerInfo> infos = listenerMap.get(listenerName);
         if (infos == null || infos.isEmpty()) {
@@ -232,11 +245,75 @@ public class ListenerManager {
         }
 
         try {
-            ListenerInfo info = infos.getFirst();
-            return info.field.get(info.bean);
+            for (ListenerInfo info : infos) {
+                if (info.listener.mode().equals(ListenerMode.LISTEN)) {
+                    return info.field.get(info.bean);
+                }
+            }
         } catch (Exception e) {
             throw new ListenerException("Failed to get listener value: " + listenerName, e);
         }
+        return null;
+    }
+
+    /**
+     * Checks if a listener with the specified name is registered and has at least one associated {@link ListenerInfo}.
+     *
+     * @param listenerName the name of the listener to check
+     * @return true if the listener is registered and has at least one associated {@link ListenerInfo}, false otherwise
+     */
+    public boolean hasListener(String listenerName) {
+        return listenerMap.containsKey(listenerName) && !listenerMap.get(listenerName).isEmpty();
+    }
+
+    /**
+     * Checks if an executor with the specified name is registered.
+     *
+     * @param executorName the name of the executor to check
+     * @return true if the executor is registered, false otherwise
+     */
+    public boolean hasExecutor(String executorName) {
+        return executorMap.containsKey(executorName);
+    }
+
+    /**
+     * Returns an unmodifiable list containing the names of all registered listeners.
+     *
+     * @return an unmodifiable list of strings, each representing the name of a registered listener
+     */
+    public List<String> getAllListenerNames() {
+        return List.copyOf(listenerMap.keySet());
+    }
+
+    /**
+     * Returns an unmodifiable list containing the names of all registered executors.
+     *
+     * @return an unmodifiable list of strings, each representing the name of a registered executor
+     */
+    public List<String> getAllExecutorNames() {
+        return List.copyOf(executorMap.keySet());
+    }
+
+    /**
+     * Unregisters the provided object from the listener, executor, and parameter maps.
+     * This method removes all references to the given object in these maps, effectively
+     * unregistering it from the ListenerManager. It will remove the object from the listenerMap,
+     * executorMap, and parameterMap if it is found within them.
+     *
+     * @param obj The object to be unregistered. Must not be null.
+     */
+    public void unregisterObject(@NonNull Object obj) {
+        listenerMap.entrySet().removeIf(entry -> {
+            entry.getValue().removeIf(info -> info.bean() == obj);
+            return entry.getValue().isEmpty();
+        });
+
+        executorMap.entrySet().removeIf(entry -> entry.getValue().bean() == obj);
+
+        parameterMap.entrySet().removeIf(entry -> {
+            entry.getValue().removeIf(info -> info.bean() == obj);
+            return entry.getValue().isEmpty();
+        });
     }
 
     /**
